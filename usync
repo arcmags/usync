@@ -13,7 +13,7 @@ SYNOPSIS
 DESCRIPTION
     Automated rsync wrapper controlled via simple config file.
 
-COMMAND
+COMMANDS
     init
         Create a new usync repo in current directory.
 
@@ -36,9 +36,9 @@ OPTIONS
 FILES
     .usync
         The init command creates a file named .usync in the current directory.
-        This file has two sections: [remote] and [exclude].  [remote] is used
-        to define the remote repo while [exclude] is a list of patterns to
-        exclude from syncing.
+        This file has two sections.  The remote repo settings are defined via
+        variables in the [remote] section, while the [exclude] section contains
+        a list of patterns to exclude from syncing.
 
         [remote]
             url=
@@ -54,7 +54,7 @@ FILES
                 the current user or inherit any ssh alias settings.
 
             dir=
-                Directory on remote to sync with.  The directoy must be a
+                Directory on remote to sync with.  The directory must be a
                 full path.  It cannot be unset.
 
         [exclude]
@@ -62,8 +62,8 @@ FILES
             --exclude option.  Any pattern that starts with a / is anchored
             to the root usync folder, otherwise it is matched against the
             end of the pathname.  If the pattern ends with a / then it will
-            only match a directory. a * matches any non-slash path component.
-            ** will match anything, including slashes.
+            only match a directory.  A * matches any non-slash path component.
+            ** matches everything, including slashes.
 
             Character classes may also me used in patterns.  See the
             INCLUDE/EXCLUDE PATTERN RULES section of the rsync manual for
@@ -92,7 +92,7 @@ user=
 dir=
 excludes=()
 url_dir=
-args=('-azz' '--info=copy1,del1,name1' '--delete')
+args=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
 
 
 ## functions ::
@@ -109,9 +109,17 @@ msg_warn() {
 	printf "\e[1;38;5;11m==> WARNING: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2
 }
 
+quote() {
+    if [[ "$1" =~ ' ' ]]; then
+        printf '"%s"' "$1"
+    else
+        printf '%s' "$1"
+    fi
+}
+
 conf_gen() {
     { printf '[remote]\nurl=localhost\n#port=22\n'
-    printf '#user=%s\ndir=%s' "$USER" "$PWD"
+    printf '#user=%s\ndir=%s' "$(quote "$USER")" "$(quote "$PWD")"
     printf '\n\n[exclude]\nlocal\n.git\n' ;} > "$1"
 }
 
@@ -270,18 +278,16 @@ if [ "$flag_push" = true ]; then
     if [ "$flag_local" = true ]; then
         mkdir -p "$dir"
     else
-        # TODO: test quoting:
         # create remote directory:
-        args+=('--rsync-path' "mkdir -p $dir && rsync")
+        args+=('--rsync-path' "mkdir -p '$dir' && rsync")
     fi
-    args+=("$PWD/". "$url_dir")
-    msg "pushing $PWD/ to $url_dir ..."
+    args+=("$PWD/." "$url_dir/")
+    msg "pushing %s to %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
 
 # pull:
 else
-    # TODO: pull .usync from remote and source it:
     args+=("$url_dir/". "$PWD")
-    msg "pulling $PWD/ from $url_dir ..."
+    msg "pulling %s from %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
 fi
 
 # print rsync command:
@@ -292,16 +298,18 @@ if [ "$flag_verbose" = true ]; then
     fi
     printf '%s rsync' "$ps"
     for arg in "${args[@]}"; do
-        printf ' %q' "$arg"
+        printf ' %s' "$(quote "$arg")"
     done
     printf '\n'
 fi
 
 # rsync parse output to look like git:
-rsync "${args[@]}" | sed -E \
-    -e '/^.*\/$/d' -e '/^created /d' \
+rsync "${args[@]}" | sed -E -e '/^created /d' \
     -e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
     -e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
+#rsync "${args[@]}" | sed -E -e '/^.*\/$/d' -e '/^created /d' \
+    #-e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
+    #-e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
 
 # dry-run:
 if [ "$flag_dryrun" = true ]; then
