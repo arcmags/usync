@@ -213,45 +213,37 @@ if [ -z "$dir" ]; then
     exit 11
 fi
 
-# remove trailing / from dir:
-if [ "${dir: -1}" = '/' ]; then
-    dir="${dir:0:-1}"
-fi
 
 # local host:
 if [ "$url" = 'localhost' ] || [ "$url" = "$HOSTNAME" ] || \
 [ "$url" = '127.0.0.1' ]; then
     flag_local=true
+    # EXIT: repo is remote, no need to copy files to themselves:
+    #if [ "$dir" = "$PWD" ]; then
+    if [ "$(realpath "$dir")" = "$(realpath .)" ]; then
+        msg_warn 'usync repo is remote, no action taken'
+        exit 0
+    fi
 
 # remote host:
 else
+    # get ssh alias config, if any:
+    conf_ssh="$(ssh -G "$url")"
+
     # FAIL: unable to reach url:
-    if ! ping -c1 -w4 "$url" &>/dev/null; then
+    if ! ping -c1 -w4 "$url" &>/dev/null &&
+    ! ping -c1 -w4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
         msg_error 'unable to reach url: %s' "$url"
         exit 12
+
     # FAIL: invalid port number:
     elif [ -n "$port" ] && \
     ([[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]); then
         msg_error "invalid port: $port"
         exit 13
     fi
-fi
 
-# make rsync url:dir arg:
-url_dir="$url:$dir"
-if [ "$flag_local" = true ]; then
-    url_dir="$dir"
-fi
-
-# EXIT: repo is remote, no need to copy files to themselves:
-if [ "$flag_local" = true ] && [ "$dir" = "$PWD" ]; then
-    msg_warn 'usync repo is remote, no action taken'
-    exit 0
-fi
-
-# ssh:
-if [ "$flag_local" = false ]; then
-    conf_ssh="$(ssh -G "$url")"
+    # set ssh command:
     cmd_ssh='ssh'
     if [ -n "$port" ] && \
     [ "$(grep -Po '^port \K.*' <<<"$conf_ssh")" != "$port" ]; then
@@ -266,14 +258,23 @@ if [ "$flag_local" = false ]; then
     fi
 fi
 
-# excludes:
+# add exclude patterns:
 for pattern in "${excludes[@]}"; do
     args+=("--exclude=$pattern")
 done
 
-# dry-run:
+# set --dry-run flag:
 if [ "$flag_dryrun" = true ]; then
     args+=('--dry-run')
+fi
+
+# make rsync url:dir arg:
+if [ "${dir: -1}" = '/' ]; then
+    dir="${dir:0:-1}"
+fi
+url_dir="$url:$dir"
+if [ "$flag_local" = true ]; then
+    url_dir="$dir"
 fi
 
 # push:
