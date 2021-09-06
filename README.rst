@@ -6,7 +6,7 @@ This is basic rsync wrapper I wrote to be easily configured via
 text file.  It works well for syncing various machines up with
 my central storage server.
 
-It's got colored output and it's syntax was made to be kinda like git.
+It's got colored output and its syntax was made to be kinda like git.
 Now I can just type ``usync push`` to sync up with my rpi on the fly.
 What more could you want?
 
