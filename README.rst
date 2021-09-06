@@ -21,15 +21,12 @@ Commands
 ========
 
 ``init``
-
     Create a new usync repo in current directory.
 
 ``push``
-
     Push changes to remote source.
 
 ``pull``
-
     Pull changes from remote source.
 
 
@@ -37,15 +34,12 @@ Options
 =======
 
 ``-D, --dry-run``
-
     Perform trial run making no changes.
 
 ``-V, --verbose``
-
     Print rsync command.
 
 ``-H, --help``
-
     Display help and exit.
 
 
