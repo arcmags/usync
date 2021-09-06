@@ -1,0 +1,281 @@
+#!/bin/bash
+
+## usync ::
+# (C) 2021 Chris Magyar
+# GNU General Public License v3
+
+print_help() {
+printf '\e[0;38;5;15m'
+cat <<'HELPDOC'
+SYNOPSIS
+    usync <COMMAND> [OPTIONS]
+
+DESCRIPTION
+    Automated rsync wrapper controlled via simple config file.
+
+COMMAND
+    init
+        Create a new usync repo in current directory.
+
+    push
+        Push changes to remote source.
+
+    pull
+        Pull changes from remote source.
+
+OPTIONS (flags)
+    -D, --dry-run
+        Perform trial run, making no changes.
+
+    -V, --verbose
+        Print rsync commands.
+
+    -H, --help
+        Display this help.
+
+FILES
+    .usync
+        The .usync file (created with the init command) is used to configure
+        the usync repo.  It has two sections: [remote] and [ignore].
+
+        [remote]
+
+HELPDOC
+if ! command -v rsync &>/dev/null; then
+    printf '\n'
+    msg_warn 'missing required package: rsync'
+fi
+return 0
+}
+
+# command line arguments:
+flag_dryrun=false
+flag_init=false
+flag_pull=false
+flag_push=false
+flag_verbose=false
+
+# control:
+flag_local=false
+n_cmds=0
+url=
+port=
+user=
+dir=
+excludes=()
+url_dir=
+args=('-azz' '--info=copy1,del1,name1' '--delete')
+
+
+## functions ::
+
+msg() {
+	printf "\e[1;38;5;12m==> \e[0;38;5;15m$1\e[0m\n" "${@:2}"
+}
+
+msg_error() {
+	printf "\e[1;38;5;9m==> ERROR: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2
+}
+
+msg_warn() {
+	printf "\e[1;38;5;11m==> WARNING: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2
+}
+
+conf_gen() {
+    { printf '[remote]\nurl=localhost\n#port=22\n'
+    printf '#user=%s\ndir=%s' "$USER" "$PWD"
+    printf '\n\n[exclude]\nlocal\n.git\n' ;} > "$1"
+}
+
+conf_parse() {
+    local conf="$(sed -n '/^\s*[^#]/p' "$1")"
+    eval "$(sed -n '/^\s*\[remote\]/,/^\s*\[/{/^\s*\[/!p;}' <<<"$conf" | \
+        sed -Ee 's/^\s*(url|port|user|dir)\s*=\s*(.*)/\1=\2/g')"
+    mapfile -t excludes < <(sed -n '/^\s*\[exclude\]/,/^\s*\[/{/^\s*\[/!p;}' \
+         <<<"$conf")
+}
+
+
+## main() ::
+
+for arg in "$@"; do
+    case "$arg" in
+        init)
+            flag_init=true
+            ((n_cmds++)) ;;
+        pull)
+            flag_pull=true
+            ((n_cmds++)) ;;
+        push)
+            flag_push=true
+            ((n_cmds++)) ;;
+        -D|--dryrun|--dry-run)
+            flag_dryrun=true ;;
+        -V|--verbose)
+            flag_verbose=true ;;
+        *)
+            msg_error 'unknown option: %s' "$arg"
+            exit 7 ;;
+    esac
+    # FAIL: too many actions:
+    if [ $n_cmds -gt 1 ]; then
+        msg_error 'cannot perform multiple actions'
+        exit 6
+    fi
+done
+
+# HELP: no actions:
+if [ $n_cmds -eq 0 ]; then
+    print_help
+    exit 5
+fi
+
+# FAIL: missing rsync:
+if ! command -v rsync &>/dev/null; then
+    printf '\n'
+    msg_error 'missing required package: rsync'
+    exit 4
+fi
+
+# init:
+if [ "$flag_init" = 'true' ]; then
+    # FAIL: already a repo:
+    if [ -f .usync ]; then
+        msg_error '.usync already exists'
+        exit 3
+    fi
+    conf_gen .usync
+    exit 0
+fi
+
+# cd to closest parent dir with .usync file:
+while [ ! -f .usync ] && [ "$PWD" != '/' ]; do
+    cd ..
+done
+
+# FAIL: no .usync file found:
+if [ ! -f .usync ]; then
+    msg_error 'not a usync repository (or any parent up to mount point /)'
+    exit 2
+fi
+
+# parse .usync file:
+conf_parse .usync
+
+# FAIL: no url:
+if [ -z "$url" ]; then
+    msg_error 'url must be specified in .usync'
+    exit 2
+fi
+
+# FAIL: no directory:
+if [ -z "$dir" ]; then
+    msg_error 'directory must be specified in .usync'
+    exit 2
+fi
+
+# remove trailing / from dir:
+if [ "${dir: -1}" = '/' ]; then
+    dir="${dir:0:-1}"
+fi
+
+# local host:
+if [ "$url" = 'localhost' ] || [ "$url" = "$HOSTNAME" ] || \
+[ "$url" = '127.0.0.1' ]; then
+    flag_local=true
+
+# remote host:
+else
+    # FAIL: unable to reach url:
+    if ! ping -c1 -w4 "$url" &>/dev/null; then
+        msg_error 'unable to reach url: %s' "$url"
+        exit 2
+    # FAIL: invalid port number:
+    elif [ -n "$port" ] && \
+    ([[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]); then
+        msg_error "invalid port: $port"
+        exit 2
+    fi
+fi
+
+# make rsync url:dir arg:
+url_dir="$url:$dir"
+if [ "$flag_local" = 'true' ]; then
+    url_dir="$dir"
+fi
+
+# EXIT: repo is remote, no need to copy files to themselves:
+if [ "$flag_local" = 'true' ] && [ "$dir" = "$PWD" ]; then
+    msg_warn 'usync repo is remote, no action taken'
+    exit 0
+fi
+
+# ssh:
+if [ "$flag_local" = 'false' ]; then
+    conf_ssh="$(ssh -G "$url")"
+    cmd_ssh='ssh'
+    if [ -n "$port" ] && \
+    [ "$(grep -Po '^port \K.*' <<<"$conf_ssh")" != "$port" ]; then
+        cmd_ssh+=" -p $port"
+    fi
+    if [ -n "$user" ] && \
+    [ "$(grep -Po '^user \K.*' <<<"$conf_ssh")" != "$user" ]; then
+        cmd_ssh+=" -l $user"
+    fi
+    if [ "$cmd_ssh" != 'ssh' ]; then
+        args+=('-e' "$cmd_ssh")
+    fi
+fi
+
+# dry-run:
+if [ "$flag_dryrun" = 'true' ]; then
+    args+=('--dry-run')
+fi
+
+# excludes:
+for pattern in "${excludes[@]}"; do
+    args+=("--exclude=$pattern")
+done
+
+# push:
+if [ "$flag_push" = true ]; then
+    if [ "$flag_local" = 'true' ]; then
+        mkdir -p "$dir"
+    else
+        # TODO: test quoting:
+        # create remote directory:
+        args+=('--rsync-path' "mkdir -p $dir && rsync")
+    fi
+    args+=("$PWD/". "$url_dir")
+    msg "pushing $PWD/ to $url_dir ..."
+
+# pull:
+else
+    # TODO: pull .usync from remote and source it:
+    args+=("$url_dir/". "$PWD")
+    msg "pulling $PWD/ from $url_dir ..."
+fi
+
+# print rsync command:
+if [ "$flag_verbose" = true ]; then
+    ps=$'\e[1;38;5;10m./$\e[0;38;5;15m'
+    if [ $EUID -eq 0 ]; then
+        ps=$'\e[1;38;5;9m  #\e[0;38;5;15m'
+    fi
+    printf '%s rsync' "$ps"
+    for arg in "${args[@]}"; do
+        printf ' %q' "$arg"
+    done
+    printf '\n'
+fi
+
+# rsync parse output to look like git:
+rsync "${args[@]}" | sed -E \
+    -e '/^.*\/$/d' -e '/^created /d' \
+    -e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
+    -e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
+
+# dry-run:
+if [ "$flag_dryrun" = 'true' ]; then
+    msg_warn 'dry-run: no files changed'
+fi
