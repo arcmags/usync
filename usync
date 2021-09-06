@@ -149,28 +149,31 @@ for arg in "$@"; do
             flag_dryrun=true ;;
         -V|--verbose)
             flag_verbose=true ;;
+        -H|--help)
+            print_help
+            exit 0 ;;
         *)
             msg_error 'unknown option: %s' "$arg"
-            exit 7 ;;
+            exit 4 ;;
     esac
     # FAIL: too many actions:
     if [ $n_cmds -gt 1 ]; then
         msg_error 'cannot perform multiple actions'
-        exit 6
+        exit 5
     fi
 done
 
-# HELP: no actions:
+# HELP: no command:
 if [ $n_cmds -eq 0 ]; then
     print_help
-    exit 5
+    exit 6
 fi
 
 # FAIL: missing rsync:
 if ! command -v rsync &>/dev/null; then
     printf '\n'
     msg_error 'missing required package: rsync'
-    exit 4
+    exit 7
 fi
 
 # init:
@@ -178,7 +181,7 @@ if [ "$flag_init" = true ]; then
     # FAIL: already a repo:
     if [ -f .usync ]; then
         msg_error '.usync already exists'
-        exit 3
+        exit 8
     fi
     conf_gen .usync
     exit 0
@@ -192,7 +195,7 @@ done
 # FAIL: no .usync file found:
 if [ ! -f .usync ]; then
     msg_error 'not a usync repository (or any parent up to mount point /)'
-    exit 2
+    exit 9
 fi
 
 # parse .usync file:
@@ -201,13 +204,13 @@ conf_parse .usync
 # FAIL: no url:
 if [ -z "$url" ]; then
     msg_error 'url must be specified in .usync'
-    exit 2
+    exit 10
 fi
 
 # FAIL: no directory:
 if [ -z "$dir" ]; then
     msg_error 'directory must be specified in .usync'
-    exit 2
+    exit 11
 fi
 
 # remove trailing / from dir:
@@ -225,12 +228,12 @@ else
     # FAIL: unable to reach url:
     if ! ping -c1 -w4 "$url" &>/dev/null; then
         msg_error 'unable to reach url: %s' "$url"
-        exit 2
+        exit 12
     # FAIL: invalid port number:
     elif [ -n "$port" ] && \
     ([[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]); then
         msg_error "invalid port: $port"
-        exit 2
+        exit 13
     fi
 fi
 
@@ -315,3 +318,16 @@ rsync "${args[@]}" | sed -E -e '/^created /d' \
 if [ "$flag_dryrun" = true ]; then
     msg_warn 'dry-run: no files changed'
 fi
+
+
+## error codes ::
+#   4   unknown argument
+#   5   too many commands
+#   6   no command
+#   7   missing rsync
+#   8   init command but .usync already exists in current directory
+#   9   not in a usync repository
+#   10  url not set in .usync
+#   11  directory not set in .usync
+#   12  unable to reach url
+#   13  invalid port number set in .usync
