@@ -70,29 +70,29 @@ FILES
             the complete documentation.
 HELPDOC
 if ! command -v rsync &>/dev/null; then
-    printf '\n'
     msg_warn 'missing required package: rsync'
 fi
-return 0
 }
 
-# command line arguments:
+# arguments:
 flag_dryrun=false
 flag_init=false
 flag_pull=false
 flag_push=false
 flag_verbose=false
 
-# control:
-flag_local=false
+# internal control:
 n_cmds=0
+flag_local=false
 url=
 port=
 user=
 dir=
 excludes=()
 url_dir=
-args=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
+args_rsync=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
+conf_ssh=
+cmd_ssh='ssh'
 
 
 ## functions ::
@@ -135,7 +135,7 @@ quote() {
 conf_gen() {
     { printf '[remote]\nurl=localhost\n#port=22\n'
     printf '#user=%s\ndir=%s' "$(quote "$USER")" "$(quote "$PWD")"
-    printf '\n\n[exclude]\nlocal\n.git\n' ;} > "$1"
+    printf '\n\n[exclude]\n/local\n.git\n' ;} > "$1"
 }
 
 conf_parse() {
@@ -144,6 +144,9 @@ conf_parse() {
         sed -Ee 's/^\s*(url|port|user|dir)\s*=\s*(.*)/\1=\2/g')"
     mapfile -t excludes < <(sed -n '/^\s*\[exclude\]/,/^\s*\[/{/^\s*\[/!p;}' \
          <<<"$conf")
+    if [ "${dir: -1}" = '/' ]; then
+        dir="${dir:0:-1}"
+    fi
 }
 
 
@@ -171,9 +174,9 @@ for arg in "$@"; do
             msg_error 'unknown option: %s' "$arg"
             exit 4 ;;
     esac
-    # FAIL: too many actions:
+    # ERROR: too many actions:
     if [ $n_cmds -gt 1 ]; then
-        msg_error 'cannot perform multiple actions'
+        msg_error 'cannot perform multiple commands'
         exit 5
     fi
 done
@@ -184,7 +187,7 @@ if [ $n_cmds -eq 0 ]; then
     exit 6
 fi
 
-# FAIL: missing rsync:
+# ERROR: missing rsync:
 if ! command -v rsync &>/dev/null; then
     printf '\n'
     msg_error 'missing required package: rsync'
@@ -193,7 +196,7 @@ fi
 
 # init:
 if [ "$flag_init" = true ]; then
-    # FAIL: already a repo:
+    # ERROR: already in a repo:
     if [ -f .usync ]; then
         msg_error '.usync already exists'
         exit 8
@@ -207,7 +210,7 @@ while [ ! -f .usync ] && [ "$PWD" != '/' ]; do
     cd ..
 done
 
-# FAIL: no .usync file found:
+# ERROR: no .usync file found:
 if [ ! -f .usync ]; then
     msg_error 'not a usync repository (or any parent up to mount point /)'
     exit 9
@@ -216,27 +219,25 @@ fi
 # parse .usync file:
 conf_parse .usync
 
-# FAIL: no url:
+# ERROR: no url:
 if [ -z "$url" ]; then
     msg_error 'url must be specified in .usync'
     exit 10
 fi
 
-# FAIL: no directory:
+# ERROR: no directory:
 if [ -z "$dir" ]; then
     msg_error 'directory must be specified in .usync'
     exit 11
 fi
 
-
 # local host:
 if [ "$url" = 'localhost' ] || [ "$url" = "$HOSTNAME" ] || \
 [ "$url" = '127.0.0.1' ]; then
     flag_local=true
-    # EXIT: repo is remote, no need to copy files to themselves:
-    #if [ "$dir" = "$PWD" ]; then
+    # EXIT: inside remote, no need to copy files to themselves:
     if [ "$(realpath "$dir")" = "$(realpath .)" ]; then
-        msg_warn 'usync repo is remote, no action taken'
+        msg_warn 'inside remote repo, no action taken'
         exit 0
     fi
 
@@ -245,21 +246,21 @@ else
     # get ssh alias config, if any:
     conf_ssh="$(ssh -G "$url")"
 
-    # FAIL: unable to reach url:
-    if ! ping -c1 -w4 "$url" &>/dev/null &&
-    ! ping -c1 -w4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
-        msg_error 'unable to reach url: %s' "$url"
+    # ERROR: unable to reach remote:
+    if ! ping -c1 -W4 "$url" &>/dev/null &&
+    ! ping -c1 -W4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
+        msg_error 'unable to reach remote: %s' "$url"
         exit 12
+    fi
 
-    # FAIL: invalid port number:
-    elif [ -n "$port" ] && \
+    # ERROR: invalid port number:
+    if [ -n "$port" ] && \
     ([[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]); then
         msg_error "invalid port: $port"
         exit 13
     fi
 
     # set ssh command:
-    cmd_ssh='ssh'
     if [ -n "$port" ] && \
     [ "$(grep -Po '^port \K.*' <<<"$conf_ssh")" != "$port" ]; then
         cmd_ssh+=" -p $port"
@@ -269,24 +270,21 @@ else
         cmd_ssh+=" -l $user"
     fi
     if [ "$cmd_ssh" != 'ssh' ]; then
-        args+=('-e' "$cmd_ssh")
+        args_rsync+=('-e' "$cmd_ssh")
     fi
 fi
 
 # add exclude patterns:
 for pattern in "${excludes[@]}"; do
-    args+=("--exclude=$pattern")
+    args_rsync+=('--exclude' "$pattern")
 done
 
 # set --dry-run flag:
 if [ "$flag_dryrun" = true ]; then
-    args+=('--dry-run')
+    args_rsync+=('--dry-run')
 fi
 
 # make rsync url:dir arg:
-if [ "${dir: -1}" = '/' ]; then
-    dir="${dir:0:-1}"
-fi
 url_dir="$url:$dir"
 if [ "$flag_local" = true ]; then
     url_dir="$dir"
@@ -298,28 +296,28 @@ if [ "$flag_push" = true ]; then
         mkdir -p "$dir"
     else
         # create remote directory:
-        args+=('--rsync-path' "mkdir -p '$dir' && rsync")
+        args_rsync+=('--rsync-path' "mkdir -p '$dir' && rsync")
     fi
-    args+=("$PWD/." "$url_dir/")
+    args_rsync+=("$PWD/." "$url_dir")
     msg "pushing %s to %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
 
 # pull:
 else
-    args+=("$url_dir/". "$PWD")
+    args_rsync+=("$url_dir/." "$PWD")
     msg "pulling %s from %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
 fi
 
 # print rsync command:
 if [ "$flag_verbose" = true ]; then
-    msg_cmd rsync "${args[@]}"
+    msg_cmd rsync "${args_rsync[@]}"
 fi
 
 # rsync and parse output:
-rsync "${args[@]}" | sed -E -e '/^.*\/$/d' -e '/^created /d' \
+rsync "${args_rsync[@]}" | sed -E -e '/^.*\/$/d' -e '/^created /d' \
     -e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
     -e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
 # rsync and parse output, also print locally modified directories:
-#rsync "${args[@]}" | sed -E -e '/^created /d' \
+#rsync "${args_rsync[@]}" | sed -E -e '/^created /d' \
     #-e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
     #-e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
 

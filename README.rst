@@ -6,8 +6,8 @@ This is basic rsync wrapper I wrote to be easily configured via
 text file.  It works well for syncing various machines up with
 my central storage server.
 
-It's got colored output and its syntax was made to be kinda like git.
-Now I can just type ``usync push`` to sync up with my rpi on the fly.
+It's got colored output and its commands are kinda like git.
+I can just type ``usync push`` to sync up with my rpi on the fly.
 What more could you want?
 
 
@@ -84,6 +84,15 @@ Files
 
 Notes
 =====
+
+The script I used for this kind of thing in the past was far more complicated.
+It parsed a boat-load of command line flags/options, could define multiple
+remotes in one config file, executed arbitrary commands on the remote, updated
+usync repos recursively, whatever.  I realized I never really used all that
+stuff though, and it just seemed like it was trying to do too much (do one
+thing and do it well, ya know).  If you want to have multiple remotes or more
+options, you can use multiple config files and script something yourself.  So
+there!
 
 I'm pretty sure usync will work fine with spaces, all kinds of spaces, spaces
 everywhere if you gotta be *that* guy.  I put way too much time and effort into
