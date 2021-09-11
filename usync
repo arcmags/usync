@@ -7,11 +7,18 @@
 print_help() {
 printf '\e[0;38;5;15m'
 cat <<'HELPDOC'
+NAME
+    usync - push/pull file changes from remote source
+
 SYNOPSIS
     usync <COMMAND> [OPTIONS]
 
 DESCRIPTION
-    Automated rsync wrapper controlled via simple config file.
+    usync is an automated rsync wrapper controlled by a simple config file.
+    A file named .usync defines a usync repo - a collection of files and
+    directories along with the address of a remote source to sync with.  usync
+    searches the current and parent directories for a .usync file and executes
+    COMMAND on that repo.
 
 COMMANDS
     init
@@ -96,7 +103,6 @@ cmd_ssh='ssh'
 
 
 ## functions ::
-
 msg() {
 	printf "\e[1;38;5;12m==> \e[0;38;5;15m$1\e[0m\n" "${@:2}"
 }
@@ -151,7 +157,6 @@ conf_parse() {
 
 
 ## main() ::
-
 for arg in "$@"; do
     case "$arg" in
         init)
