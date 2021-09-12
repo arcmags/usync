@@ -144,6 +144,9 @@ conf_gen() {
     printf '\n\n[exclude]\n/local\n.git\n' ;} > "$1"
 }
 
+# TODO: get rid of this eval for security reasons:
+# TODO: remove blank lines from excludes:
+# TODO: deal with shitty filenames (like ones starting with # and whatnot):
 conf_parse() {
     local conf="$(sed -n '/^\s*[^#]/p' "$1")"
     eval "$(sed -n '/^\s*\[remote\]/,/^\s*\[/{/^\s*\[/!p;}' <<<"$conf" | \
