@@ -116,46 +116,35 @@ msg_warn() {
 }
 
 msg_cmd() {
-    local arg str='\e[1;38;5;10m-/$\e[0;38;5;15m'
+    local arg str=$'\e[1;38;5;10m''-/$'$'\e[0;38;5;15m'
     if [ $EUID -eq 0 ]; then
-        str='\e[1;38;5;9m-/#\e[0;38;5;15m'
+        str=$'\e[1;38;5;9m''-/#'$'\e[0;38;5;15m'
     fi
     for arg in "$@"; do
-        if [[ "$arg" =~ ' ' ]]; then
-            str+=" \"$arg\""
-        else
-            str+=" $arg"
-        fi
+        str+=" $(printf '%q' "$arg")"
     done
-    printf "$str\e[0m\n"
-}
-
-quote() {
-    if [[ "$1" =~ ' ' ]]; then
-        printf '"%s"' "$1"
-    else
-        printf '%s' "$1"
-    fi
+    printf '%s\e[0m\n' "$str"
 }
 
 conf_gen() {
     { printf '[remote]\nurl=localhost\n#port=22\n'
-    printf '#user=%s\ndir=%s' "$(quote "$USER")" "$(quote "$PWD")"
+    printf '#user=%s\ndir=%s' "$(printf '%q' "$USER")" "$(printf '%q' "$PWD")"
     printf '\n\n[exclude]\n/local\n.git\n' ;} > "$1"
 }
 
-# TODO: get rid of this eval for security reasons:
+# TODO: get rid of eval:
 # TODO: remove blank lines from excludes:
 # TODO: deal with shitty filenames (like ones starting with # and whatnot):
 conf_parse() {
     local conf="$(sed -n '/^\s*[^#]/p' "$1")"
     eval "$(sed -n '/^\s*\[remote\]/,/^\s*\[/{/^\s*\[/!p;}' <<<"$conf" | \
         sed -Ee 's/^\s*(url|port|user|dir)\s*=\s*(.*)/\1=\2/g')"
-    mapfile -t excludes < <(sed -n '/^\s*\[exclude\]/,/^\s*\[/{/^\s*\[/!p;}' \
-         <<<"$conf")
+    # parse dir:
     if [ "${dir: -1}" = '/' ]; then
         dir="${dir:0:-1}"
     fi
+    mapfile -t excludes < <(sed -n '/^\s*\[exclude\]/,/^\s*\[/{/^\s*\[/!p;}' \
+         <<<"$conf")
 }
 
 
@@ -307,12 +296,12 @@ if [ "$flag_push" = true ]; then
         args_rsync+=('--rsync-path' "mkdir -p '$dir' && rsync")
     fi
     args_rsync+=("$PWD/." "$url_dir")
-    msg "pushing %s to %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
+    msg "pushing %s to %s ..." "$(printf '%q' "$PWD/")" "$(printf '%q' "$url_dir/")"
 
 # pull:
 else
     args_rsync+=("$url_dir/." "$PWD")
-    msg "pulling %s from %s ..." "$(quote "$PWD/")" "$(quote "$url_dir/")"
+    msg "pulling %s from %s ..." "$(printf '%q' "$PWD/")" "$(printf '%q' "$url_dir/")"
 fi
 
 # print rsync command:
@@ -340,7 +329,7 @@ fi
 #   5   too many commands
 #   6   no command
 #   7   missing rsync
-#   8   init command but .usync already exists in current directory
+#   8   init command selected but .usync already exists in current directory
 #   9   not in a usync repository
 #   10  url not set in .usync
 #   11  directory not set in .usync
