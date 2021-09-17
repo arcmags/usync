@@ -2,7 +2,7 @@
 usync
 =====
 
-This is basic rsync wrapper I wrote to be easily configured via
+This is a basic rsync wrapper I wrote to be easily configured via
 text file.  It works well for syncing various machines up with
 my central storage server.
 
@@ -32,6 +32,9 @@ Commands
 
 Options
 =======
+
+``-c, --config <FILE>``
+    Read config from FILE instead of .usync default.
 
 ``-D, --dry-run``
     Perform trial run making no changes.

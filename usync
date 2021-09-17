@@ -31,6 +31,9 @@ COMMANDS
         Pull changes from remote source.
 
 OPTIONS
+    -c, --config <FILE>
+        Read config from FILE instead of .usync default.
+
     -D, --dry-run
         Perform trial run making no changes.
 
@@ -87,6 +90,7 @@ flag_init=false
 flag_pull=false
 flag_push=false
 flag_verbose=false
+opt_config=
 
 # internal control:
 n_cmds=0
@@ -100,6 +104,7 @@ url_dir=
 args_rsync=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
 conf_ssh=
 cmd_ssh='ssh'
+config='.usync'
 
 
 ## functions ::
@@ -116,9 +121,9 @@ msg_warn() {
 }
 
 msg_cmd() {
-    local arg str=$'\e[1;38;5;10m''-/$'$'\e[0;38;5;15m'
+    local arg str=$'\e[1;38;5;10m'' -$'$'\e[0;38;5;15m'
     if [ $EUID -eq 0 ]; then
-        str=$'\e[1;38;5;9m''-/#'$'\e[0;38;5;15m'
+        str=$'\e[1;38;5;9m'' -#'$'\e[0;38;5;15m'
     fi
     for arg in "$@"; do
         str+=" $(printf '%q' "$arg")"
@@ -149,8 +154,8 @@ conf_parse() {
 
 
 ## main() ::
-for arg in "$@"; do
-    case "$arg" in
+while (($#)); do
+    case "$1" in
         init)
             flag_init=true
             ((n_cmds++)) ;;
@@ -160,6 +165,9 @@ for arg in "$@"; do
         push)
             flag_push=true
             ((n_cmds++)) ;;
+        -c|--config)
+            shift
+            opt_config="$1" ;;
         -D|--dryrun|--dry-run)
             flag_dryrun=true ;;
         -V|--verbose)
@@ -168,7 +176,7 @@ for arg in "$@"; do
             print_help
             exit 0 ;;
         *)
-            msg_error 'unknown option: %s' "$arg"
+            msg_error 'unknown option: %s' "$1"
             exit 4 ;;
     esac
     # ERROR: too many actions:
@@ -176,6 +184,7 @@ for arg in "$@"; do
         msg_error 'cannot perform multiple commands'
         exit 5
     fi
+    shift
 done
 
 # HELP: no command:
@@ -183,6 +192,9 @@ if [ $n_cmds -eq 0 ]; then
     print_help
     exit 6
 fi
+
+# set config file:
+config="${opt_config:-$config}"
 
 # ERROR: missing rsync:
 if ! command -v rsync &>/dev/null; then
@@ -194,38 +206,46 @@ fi
 # init:
 if [ "$flag_init" = true ]; then
     # ERROR: already in a repo:
-    if [ -f .usync ]; then
-        msg_error '.usync already exists'
+    if [ -f "$config" ]; then
+        msg_error '%q already exists' "$config"
         exit 8
     fi
-    conf_gen .usync
+    conf_gen "$config"
     exit 0
 fi
 
-# cd to closest parent dir with .usync file:
-while [ ! -f .usync ] && [ "$PWD" != '/' ]; do
-    cd ..
-done
+if [ -z "$opt_config" ]; then
+    # cd to closest parent dir with config file:
+    while [ ! -f "$config" ] && [ "$PWD" != '/' ]; do
+        cd ..
+    done
 
-# ERROR: no .usync file found:
-if [ ! -f .usync ]; then
-    msg_error 'not a usync repository (or any parent up to mount point /)'
-    exit 9
+    # ERROR: no config file found:
+    if [ ! -f "$config" ]; then
+        msg_error 'not a usync repository (or any parent up to mount point /)'
+        exit 9
+    fi
+
+# ERROR: config file not found:
+elif [ ! -f "$config" ]; then
+    msg_error 'file %q not found' "$config"
+    exit 10
+
 fi
 
-# parse .usync file:
-conf_parse .usync
+# parse config file:
+conf_parse "$config"
 
 # ERROR: no url:
 if [ -z "$url" ]; then
-    msg_error 'url must be specified in .usync'
-    exit 10
+    msg_error 'url must be specified in %q' "$config"
+    exit 11
 fi
 
 # ERROR: no directory:
 if [ -z "$dir" ]; then
-    msg_error 'directory must be specified in .usync'
-    exit 11
+    msg_error 'directory must be specified in %q' "$config"
+    exit 12
 fi
 
 # local host:
@@ -247,14 +267,14 @@ else
     if ! ping -c1 -W4 "$url" &>/dev/null &&
     ! ping -c1 -W4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
         msg_error 'unable to reach remote: %s' "$url"
-        exit 12
+        exit 13
     fi
 
     # ERROR: invalid port number:
     if [ -n "$port" ] && \
     ([[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]); then
         msg_error "invalid port: $port"
-        exit 13
+        exit 14
     fi
 
     # set ssh command:
@@ -329,9 +349,10 @@ fi
 #   5   too many commands
 #   6   no command
 #   7   missing rsync
-#   8   init command selected but .usync already exists in current directory
+#   8   init command selected but config file already exists
 #   9   not in a usync repository
-#   10  url not set in .usync
-#   11  directory not set in .usync
-#   12  unable to reach url
-#   13  invalid port number set in .usync
+#   10  config file not found
+#   11  url not set in config file
+#   12  directory not set in config file
+#   13  unable to reach url
+#   14  invalid port number set in config file
