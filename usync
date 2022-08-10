@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## usync ::
-# (C) 2021 Chris Magyar
+# (C) 2022 Chris Magyar
 # GNU General Public License v3
 
 print_help() {
@@ -32,7 +32,10 @@ COMMANDS
 
 OPTIONS
     -c, --config <FILE>
-        Read config from FILE instead of .usync default.
+        Read config from FILE instead of .usync default.  Config files are read
+        and parsed as if they are in the current directory.  When specifying a
+        config file with this option, usync will not search parent directories
+        if the config file does not exist.
 
     -D, --dry-run
         Perform trial run making no changes.
@@ -51,19 +54,19 @@ FILES
         a list of patterns to exclude from syncing.
 
         [remote]
-            url=
+            url =
                 Remote repo url.  It may be an ssh alias or even localhost.
                 It cannot be unset.
 
-            port=
+            port =
                 Remote port to connect to.  If left blank, it will take on
                 the default value of 22 or inherit any ssh alias settings.
 
-            user=
+            user =
                 User to connect to remote as.  If left blank, it will be
                 the current user or inherit any ssh alias settings.
 
-            dir=
+            dir =
                 Directory on remote to sync with.  The directory must be a
                 full path.  It cannot be unset.
 
@@ -78,6 +81,9 @@ FILES
             Character classes may also me used in patterns.  See the
             INCLUDE/EXCLUDE PATTERN RULES section of the rsync manual for
             the complete documentation.
+
+REQUIREMENTS
+    rsync
 HELPDOC
 if ! command -v rsync &>/dev/null; then
     msg_warn 'missing required package: rsync'
@@ -105,7 +111,6 @@ args_rsync=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
 conf_ssh=
 cmd_ssh='ssh'
 config='.usync'
-
 
 ## functions ::
 msg() {
@@ -152,8 +157,7 @@ conf_parse() {
          <<<"$conf")
 }
 
-
-## main() ::
+## main ::
 while (($#)); do
     case "$1" in
         init)
@@ -198,7 +202,6 @@ config="${opt_config:-$config}"
 
 # ERROR: missing rsync:
 if ! command -v rsync &>/dev/null; then
-    printf '\n'
     msg_error 'missing required package: rsync'
     exit 7
 fi
@@ -263,12 +266,14 @@ else
     # get ssh alias config, if any:
     conf_ssh="$(ssh -G "$url")"
 
+    # TODO: cannot reliably use ping to check connectivity, maybe could
+    #       try an ssh connection as a test
     # ERROR: unable to reach remote:
-    if ! ping -c1 -W4 "$url" &>/dev/null &&
-    ! ping -c1 -W4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
-        msg_error 'unable to reach remote: %s' "$url"
-        exit 13
-    fi
+    #if ! ping -c1 -W4 "$url" &>/dev/null &&
+    #! ping -c1 -W4 "$(grep -Po '^hostname \K.*' <<<"$conf_ssh")" &>/dev/null; then
+        #msg_error 'unable to reach remote: %s' "$url"
+        #exit 13
+    #fi
 
     # ERROR: invalid port number:
     if [ -n "$port" ] && \
@@ -315,12 +320,12 @@ if [ "$flag_push" = true ]; then
         # create remote directory:
         args_rsync+=('--rsync-path' "mkdir -p '$dir' && rsync")
     fi
-    args_rsync+=("$PWD/." "$url_dir")
+    args_rsync+=("$PWD/" "$url_dir")
     msg "pushing %s to %s ..." "$(printf '%q' "$PWD/")" "$(printf '%q' "$url_dir/")"
 
 # pull:
 else
-    args_rsync+=("$url_dir/." "$PWD")
+    args_rsync+=("$url_dir/" "$PWD")
     msg "pulling %s from %s ..." "$(printf '%q' "$PWD/")" "$(printf '%q' "$url_dir/")"
 fi
 
@@ -342,7 +347,6 @@ rsync "${args_rsync[@]}" | sed -E -e '/^.*\/$/d' -e '/^created /d' \
 if [ "$flag_dryrun" = true ]; then
     msg_warn 'dry-run: no files changed'
 fi
-
 
 ## error codes ::
 #   4   unknown argument
