@@ -84,6 +84,7 @@ FILES
 
 REQUIREMENTS
     rsync
+    ssh
 HELPDOC
 if ! command -v rsync &>/dev/null; then
     msg_warn 'missing required package: rsync'
@@ -200,9 +201,14 @@ fi
 # set config file:
 config="${opt_config:-$config}"
 
+# ERROR: missing ssh:
+if ! command -v ssh &>/dev/null; then
+    msg_error 'missing required program: ssh'
+    exit 7
+fi
 # ERROR: missing rsync:
 if ! command -v rsync &>/dev/null; then
-    msg_error 'missing required package: rsync'
+    msg_error 'missing required program: rsync'
     exit 7
 fi
 
@@ -352,7 +358,7 @@ fi
 #   4   unknown argument
 #   5   too many commands
 #   6   no command
-#   7   missing rsync
+#   7   missing ssh or rsync
 #   8   init command selected but config file already exists
 #   9   not in a usync repository
 #   10  config file not found
