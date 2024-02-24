@@ -65,7 +65,7 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 
 <!--metadata:
 author: Chris Magyar <c.magyar.ec@gmail.com>
-description: Basic automated rsync wrapper written in bash.
+description: Automated rsync wrapper written in bash.
 keywords: usync, rsync, bash
 css: ../css/main.css
 -->

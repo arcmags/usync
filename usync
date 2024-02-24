@@ -60,11 +60,14 @@ REQUIREMENTS
 HELPDOC
 }
 
-# internal control:
+# TODO: list/query action
+
+## internal control ::
 a=0
 arg="$1"
 args=("$@")
 args_rsync=('-azz' '--protect-args' '--info=copy1,del1,name1' '--delete')
+arr_config=()
 cfg_ssh=
 cmd_ssh='ssh'
 dir=
@@ -77,6 +80,7 @@ flg_local=false
 flg_pull=false
 flg_push=false
 flg_verbose=false
+host="$(</etc/hostname)"
 n_actions=0
 opt_config=
 port=
@@ -84,6 +88,7 @@ requirements=(rsync ssh yq)
 url=
 url_dir=
 user=
+[ -f /etc/hostname- ] && host="$(</etc/hostname-)"
 
 ## functions ::
 msg() {
@@ -140,6 +145,11 @@ for req in "${requirements[@]}"; do if ! command -v "$req" &>/dev/null; then
     exit 4
 fi; done
 
+if [ ${#args[@]} -gt 0 ]; then
+    msg_error "unknown args: ${args[*]}"
+    exit 3
+fi
+
 if [ $n_actions -eq 0 ] || [ $n_actions -gt 1 ]; then
     msg_error 'too many/no actions given'
     exit 3
@@ -149,9 +159,10 @@ file_config="${opt_config:-$file_config}"
 
 if [ "$flg_init" = true ]; then
     if [ -f "$file_config" ]; then
-        msg_error '%q already exists' "$file_config"
+        msg_error "already exists: $file_config"
         exit 3
     fi
+    touch "$file_config"
     { printf '## %s ::\n\n' "$(realpath "$file_config")"
     printf 'dir: %s\nurl: localhost\n\nexclude:\n- /local\n- .git\n\n' "$PWD"
     printf '# vim:ft=yaml\n' ;} > "$file_config"
@@ -168,7 +179,7 @@ if [ -z "$opt_config" ]; then
     fi
 
 elif [ ! -f "$file_config" ]; then
-    msg_error 'file %q not found' "$file_config"
+    msg_error "file not found: $file_config"
     exit 3
 fi
 
@@ -200,7 +211,7 @@ if [ -n "$port" ]; then
     fi
 fi
 
-if [ "$url" = 'localhost' ] || [ "$url" = "$HOSTNAME" ] || [ "$url" = '127.0.0.1' ]; then
+if [[ "$url" =~ ^localhost|$host|127.0.0.1$ ]]; then
     flg_local=true
     if [ "$(realpath "$dir")" = "$(realpath "$PWD")" ]; then
         msg_warn 'remote: no action taken'
@@ -248,6 +259,6 @@ rsync "${args_rsync[@]}" | sed -E -e '/\/$/d' -e '/^created /d' \
     -e 's/deleting /\o033[38;5;9m  - \o033[38;5;15m/' \
     -e '/  - /! s/^/\o033[38;5;10m  + \o033[38;5;15m/'
 
-[ "$flg_dryrun" = true ] && msg_warn 'dry-run: no files changed'
+[ "$flg_dryrun" = true ] && msg_warn 'dry-run: no files synced'
 
 # vim:ft=bash
