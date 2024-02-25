@@ -21,7 +21,7 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 
 ### Options
 `-c, --config <FILE>`
-: Read config from FILE instead of *.usync*.
+: Read config from *FILE* instead of *.usync*.
 
 `-D, --dry-run`
 : Perform dry run making no changes.
@@ -33,7 +33,7 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 : Display help and exit.
 
 ## Config
-*.usync* - yaml file defining usync repo, may contain the following keys:
+*.usync* - yaml file defining usync repo, contains the following keys:
 
 *url*
 : Remote repo url. May be an ssh alias. Required.

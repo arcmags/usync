@@ -80,7 +80,7 @@ flg_local=false
 flg_pull=false
 flg_push=false
 flg_verbose=false
-host="$(</etc/hostname)"
+host="$HOSTNAME"
 n_actions=0
 opt_config=
 port=
@@ -88,7 +88,12 @@ requirements=(rsync ssh yq)
 url=
 url_dir=
 user=
-[ -f /etc/hostname- ] && host="$(</etc/hostname-)"
+
+if [ -f /etc/hostname- ]; then
+    host="$(</etc/hostname-)"
+elif [ -f /etc/hostname ]; then
+    host="$(</etc/hostname)"
+fi
 
 ## functions ::
 msg() {
