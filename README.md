@@ -7,7 +7,7 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 
 ## Usage
 
-    usync <COMMAND> [OPTIONS]
+    usync <COMMAND> [OPTION...]
 
 ### Commands
 `init`
