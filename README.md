@@ -2,8 +2,8 @@
 
 Usync is basic [rsync][rsync] wrapper controlled by a simple yaml file.
 
-Usync searches the current and parent directories for a *.usync* file. This
-file defines a remote url and directory as well as any rsync exclude patterns.
+Usync searches the current and parent directories for a *.usync* file
+that defines a remote rsync host.
 
 ## Usage
 
@@ -33,28 +33,27 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 : Display help and exit.
 
 ## Config
-*.usync* - yaml file defining usync repo, contains the following keys:
+*.usync* - yaml file containing the following keys:
 
 *url*
-: Remote repo url. May be an ssh alias. Required.
+: Remote repo url. May be an ssh alias. (required)
 
 *dir*
-: Remote directory. Must be a full path. Required.
-
-*port*
-: Remote port. If blank, inherit from ssh alias, or port 22.
+: Remote directory. Must be a full path. (required)
 
 *user*
-: Remote user. If blank, inherit from ssh alias, or current user.
+: Remote user. (optional)
+
+*port*
+: Remote port. (optional)
 
 *exclude*
-: List of patterns to exclude via rsync `--exclude` option. See
-  [FILTER RULES][rules] section of rsync manual.
+: List of patterns to exclude via rsync `--exclude` option. (optional)
+  See [FILTER RULES][rules] section of rsync manual for details and syntax.
 
 ## Requirements
 - rsync
 - ssh
-- yq
 
 ----
 [Chris Magyar](https://mags.zone)\
@@ -66,6 +65,5 @@ file defines a remote url and directory as well as any rsync exclude patterns.
 <!--metadata:
 author: Chris Magyar <c.magyar.ec@gmail.com>
 description: Automated rsync wrapper written in bash.
-keywords: usync, rsync, bash
-css: ../css/main.css
+keywords: usync, rsync, ssh, bash
 -->
