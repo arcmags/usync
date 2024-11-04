@@ -23,11 +23,26 @@ that defines a remote rsync host.
 `-c, --config <FILE>`
 : Read config from *FILE* instead of *.usync*.
 
-`-D, --dry-run`
+`-d, --dir <DIRECTORY>`
+: Set remote directory.
+
+`-e, --exclude <PATTERN>`
+: Add to exclude patterns.
+
+`-p, --port <PORT>`
+: Set remote port.
+
+`-r, --url, --remote <PORT>`
+: Set remote url.
+
+`-u, --user, <USER>`
+: Set remote user.
+
+`-D, --dryrun`
 : Perform dry run making no changes.
 
 `-V, --verbose`
-: Show rsync command.
+: Print shell commands.
 
 `-H, --help`
 : Display help and exit.
