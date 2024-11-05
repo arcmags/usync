@@ -92,14 +92,11 @@ url=
 url_dir=
 user=
 
-# args:
-# TODO: empty flags should resolve to false
-a=0 arg="$1" args=("$@") pargs=()
+## args ::
 flg_dryrun=false
 flg_init=false
 flg_pull=false
 flg_push=false
-flg_status=false
 flg_verbose=false
 opt_config=
 opt_dir=
@@ -108,26 +105,25 @@ opt_url=
 opt_user=
 opt_excludes=()
 
-## functions ::
-error() { msg_error "$@"; exit 5 ;}
-is_cmd() { command -v "$1" &>/dev/null ;}
-msg() { printf "\e[1;38;5;12m=> \e[0;38;5;15m$1\e[0m\n" "${@:2}" ;}
-msg2() { printf '   \e[0;38;5;15m%s\e[0m\n' "$*" ;}
-msg_cmd() {
-    [ $EUID -eq 0 ] && printf '\e[1;38;5;9m #' || printf '\e[1;38;5;12m $'
-    printf ' \e[0;38;5;15m'; for a in "${@:1:1}"; do printf '%q' "$a"; done
-    for a in "${@:2}"; do printf ' %q' "$a"; done; printf '\e[0m\n'
-}
-msg_debug() { printf "[%d] %s\n" $BASH_LINENO "$*" ;}
-msg_error() { printf "\e[1;38;5;9mE: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2 ;}
-msg_warn() { printf "\e[1;38;5;11mW: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2 ;}
-
-## functions: parse args ::
+## args: parse ::
+a=0 arg="$1" args=("$@") pargs=() opt= flg=
 parse_flg() { arg="${args[((++a))]}" ;}
 parse_opt() {
     [ ${#args[@]} -le $((a+1)) ] && error "arg required: $arg"
     opt="${args[((++a))]}"; arg="${args[((++a))]}"
 }
+
+## functions ::
+error() { msg_error "$@"; exit 5 ;}
+is_cmd() { command -v "$1" &>/dev/null ;}
+msg() { printf "\e[1;38;5;12m=> \e[0;38;5;15m$1\e[0m\n" "${@:2}" ;}
+msg_cmd() {
+    [ $EUID -eq 0 ] && printf '\e[1;38;5;9m #' || printf '\e[1;38;5;12m $'
+    printf ' \e[0;38;5;15m'; for a in "${@:1:1}"; do printf '%q' "$a"; done
+    for a in "${@:2}"; do printf ' %q' "$a"; done; printf '\e[0m\n'
+}
+msg_error() { printf "\e[1;38;5;9mE: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2 ;}
+msg_warn() { printf "\e[1;38;5;11mW: \e[0;38;5;15m$1\e[0m\n" "${@:2}" >&2 ;}
 
 ## main ::
 while [ -n "$arg" ]; do case "$arg" in
@@ -153,7 +149,7 @@ esac; done
 pargs=("${args[@]:a}")
 
 # dependency error:
-for dep in "${deps[@]}"; do is_cmd "$dep" || error "missing dep: $dep"; done
+for d in "${deps[@]}"; do is_cmd "$d" || error "missing dep: $d"; done
 
 # args error:
 [ ${#pargs[@]} -gt 0 ] && error "unknown args: ${pargs[*]}"
@@ -185,19 +181,16 @@ fi
 # parse config:
 mapfile -t lines < <(sed -E -e 's/(^\s+|\s+$)//g' -e '/^(#|$|-$)/d' "$conf")
 in_exclude=false
-for line in "${lines[@]}"; do
+for l in "${lines[@]}"; do
     if [ "$in_exclude" = true ]; then
-        if [[ "$line" =~ ^-\ +(.*) ]]; then
-            excludes+=("${BASH_REMATCH[1]}")
-            continue
-        fi
+        [[ "$l" =~ ^-\ +(.*) ]] && excludes+=("${BASH_REMATCH[1]}") && continue
         in_exclude=false
     fi
-    [[ "$line" =~ ^dir:\ +(.*) ]] && dir="${BASH_REMATCH[1]}" && continue
-    [[ "$line" =~ ^port:\ +(.*) ]] && port="${BASH_REMATCH[1]}" && continue
-    [[ "$line" =~ ^url:\ +(.*) ]] && url="${BASH_REMATCH[1]}" && continue
-    [[ "$line" =~ ^user:\ +(.*) ]] && user="${BASH_REMATCH[1]}" && continue
-    [ "$line" = 'exclude:' ] && in_exclude=true && continue
+    [[ "$l" =~ ^dir:\ +(.*) ]] && dir="${BASH_REMATCH[1]}" && continue
+    [[ "$l" =~ ^port:\ +(.*) ]] && port="${BASH_REMATCH[1]}" && continue
+    [[ "$l" =~ ^url:\ +(.*) ]] && url="${BASH_REMATCH[1]}" && continue
+    [[ "$l" =~ ^user:\ +(.*) ]] && user="${BASH_REMATCH[1]}" && continue
+    [ "$l" = 'exclude:' ] && in_exclude=true && continue
 done
 
 # set config from command line options:
@@ -219,17 +212,10 @@ if [ -n "$port" ]; then
     fi
 fi
 
-if [ -n "$port" ]; then
-    if [[ ! $port =~ ^[1-9][0-9]*$ ]] || [ $port -gt 65535 ]; then
-        error "invalid port: $port"
-fi fi
-
 # resolve host and url:
 [ -f '/etc/hostname' ] && host="$(cat /etc/hostname)"
 [ -f '/etc/hostname-' ] && host="$(cat /etc/hostname-)"
 [[ "$url" =~ ^(|$host|127.0.0.1)$ ]] && url='localhost'
-
-# TODO: pull .usync from romote and source it?
 
 # set url_dir and add user/port to rsync ssh command:
 url_dir="$dir"
@@ -264,11 +250,12 @@ if [ "$flg_push" = true ]; then
     msg 'pushing %q to %q ...' "$PWD/" "$url_dir/"
     if [ "$url" = 'localhost' ]; then
         # create local directory:
-        if [ ! -d "$dir" ] && [ "$flg_dryrun" = false ]; then
+        if [ ! -d "$dir" ] && [ "$flg_dryrun" != true ]; then
             [ "$flg_verbose" = true ] && msg_cmd mkdir -p "$dir"
             mkdir -p "$dir"
         fi
-    else
+    elif [ "$flg_dryrun" != true ]; then
+        # create remote directory:
         args_rsync+=('--rsync-path' "mkdir -p '$dir' && rsync")
     fi
     args_rsync+=("$PWD/" "$url_dir")
@@ -281,7 +268,7 @@ fi
 
 # create local directory:
 if [ "$flg_push" = true ] && [ "$url" = 'localhost' ] && [ ! -d "$dir" ]; then
-    if [ "$flg_dryrun" = false ]; then
+    if [ "$flg_dryrun" != true ]; then
         [ "$flg_verbose" = true ] && msg_cmd mkdir -p "$dir"
         mkdir -p "$dir"
     fi
