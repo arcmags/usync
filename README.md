@@ -50,17 +50,17 @@ that defines a remote rsync host.
 ## Config
 *.usync* - yaml file containing the following keys:
 
-*url*
-: Remote repo url. May be an ssh alias. (required)
-
 *dir*
 : Remote directory. Must be a full path. (required)
 
-*user*
-: Remote user. (optional)
+*remote* or *url*
+: Remote repo url. May be an ssh alias. (optional)
 
 *port*
 : Remote port. (optional)
+
+*user*
+: Remote user. (optional)
 
 *exclude*
 : List of patterns to exclude via rsync `--exclude` option. (optional)
