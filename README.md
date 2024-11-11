@@ -32,7 +32,7 @@ that defines a remote rsync host.
 `-p, --port <PORT>`
 : Set remote port.
 
-`-r, --url, --remote <PORT>`
+`-r, --remote, --url <PORT>`
 : Set remote url.
 
 `-u, --user, <USER>`
@@ -41,8 +41,14 @@ that defines a remote rsync host.
 `-D, --dryrun`
 : Perform dry run making no changes.
 
+`-Q, --quiet`
+: Don't write anything to standard out.
+
 `-V, --verbose`
 : Print shell commands.
+
+`--nocolor`
+: Disable colored output.
 
 `-H, --help`
 : Display help and exit.
@@ -65,6 +71,18 @@ that defines a remote rsync host.
 *exclude*
 : List of patterns to exclude via rsync `--exclude` option. (optional)
   See [FILTER RULES][rules] section of rsync manual for details and syntax.
+
+## Environment
+Usync is affected by the following environment variables:
+
+`NOCOLOR=1`
+: Disable colored output.
+
+`QUIET=1`
+: Run silently.
+
+`VERBOSE=1`
+: Run verbosely.
 
 ## Requirements
 - rsync
