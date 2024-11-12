@@ -5,6 +5,16 @@ Usync is basic [rsync][rsync] wrapper controlled by a simple yaml file.
 Usync searches the current and parent directories for a *.usync* file
 that defines a remote rsync host.
 
+## Installation
+
+`make install` will copy the usync script and manpage to the local user
+directories *~/.local/bin* and *~/.local/share/man* (*/usr/local/bin* and
+*/usr/share/man* if run as root). `make uninstall` removes these files from
+their respective locations.
+
+Usync is a single script, so it's easy enough to just copy it manually to your
+PATH directory of choice.
+
 ## Usage
 
     usync <command> [option...]

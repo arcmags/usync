@@ -1,0 +1,92 @@
+.TH USYNC 1 "2024-11-12" "usync" "Usync Manual"
+.SH NAME
+usync \- push/pull changes from remote host
+.SH SYNOPSIS
+\fBusync\fR <\fIcommand\fR> [\fIoption\fR...]
+.SH DESCRIPTION
+\fBusync\fR is an rsync wrapper controlled by a simple config file. \fBusync\fR
+searches the current and parent directories for a file named \fI.usync\fR that
+defines a remote rsync host and base working directory.
+.SH COMMANDS
+.TP
+\fBinit\fR
+Create a new \fI.usync\fR file in current directory.
+.TP
+\fBpush\fR
+Push changes to remote source.
+.TP
+\fBpull\fR
+Pull changes from remote source.
+.SH OPTIONS
+.TP
+\fB\-c\fR, \fB\-\-config\fR <\fIfile\fR>
+Set config file basename. \fBusync\fR searches current and parent directories
+for \fIfile\fR and uses that file and directory as its configuration and base
+working directory.
+.TP
+\fB\-d\fR, \fB\-\-dir\fR <\fIdirectory\fR>
+Set remote directory.
+.TP
+\fB\-e\fR, \fB\-\-exclude\fR <\fIpattern\fR>
+Add to exclude patterns.
+.TP
+\fB\-p\fR, \fB\-\-port\fR <\fIport\fR>
+Set remote port number.
+.TP
+\fB\-r\fR, \fB\-\-remote\fR, \fB\-\-url\fR <\fIport\fR>
+Set remote rsync url.
+.TP
+\fB\-u\fR, \fB\-\-user\fR <\fIport\fR>
+Set remote rsync/ssh user.
+.TP
+\fB\-D\fR, \fB\-\-dryrun\fR
+Perform dry run making no changes.
+.TP
+\fB\-Q\fR, \fB\-\-quiet\fR
+Don't write anything to stdout.
+.TP
+\fB\-V\fR, \fB\-\-verbose\fR
+Print more verbose information.
+.TP
+\fB\-\-nocolor\fR
+Disable colored output.
+.TP
+\fB\-H\fR, \fB\-\-help\fR
+Print help text and exit.
+.SH CONFIG
+\fBusync\fR is controlled by a simple yaml config file (default: \fI.usync\fR)
+that defines a remote rsync host and directory. This file must be present to
+\fBpush\fR or \fBpull\fR from a remote host.
+.P
+\fI.usync\fR has the following keys:
+.TP
+\fBdir\fR
+Remote rsync directory. Must be a full path. (required)
+.TP
+\fBremote\fR or \fBurl\fR
+Remote rsync url. May be an ssh alias. (required)
+.TP
+\fBport\fR
+Remote ssh port. (optional)
+.TP
+\fBuser\fR
+Remote ssh user. (optional)
+.TP
+\fBexclude\fR
+List of patters to exclude via rsync \fB--exclude\fR option. See \fBFILTER
+RULES\fR section of rsync manual for details and syntax. (optional)
+.SH ENVIRONMENT
+\fBusync\fR is affected by the following environment variables:
+.TP
+\fBNOCOLOR\fR=1
+Disable colored output.
+.TP
+\fBQUIET\fR=1
+Run silently.
+.TP
+\fBVERBOSE\fR=1
+Run verbosely.
+.SH REQUIREMENTS
+\fBrsync\fR and \fBssh\fR
+.SH AUTHOR
+Chris Magyar
