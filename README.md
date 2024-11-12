@@ -7,7 +7,7 @@ that defines a remote rsync host.
 
 ## Usage
 
-    usync <COMMAND> [OPTION...]
+    usync <command> [option...]
 
 ### Commands
 `init`
@@ -20,22 +20,22 @@ that defines a remote rsync host.
 : Pull changes from remote source.
 
 ### Options
-`-c, --config <FILE>`
+`-c, --config <file>`
 : Read config from *FILE* instead of *.usync*.
 
-`-d, --dir <DIRECTORY>`
+`-d, --dir <directory>`
 : Set remote directory.
 
-`-e, --exclude <PATTERN>`
+`-e, --exclude <pattern>`
 : Add to exclude patterns.
 
-`-p, --port <PORT>`
+`-p, --port <port>`
 : Set remote port.
 
-`-r, --remote, --url <PORT>`
+`-r, --remote, --url <url>`
 : Set remote url.
 
-`-u, --user, <USER>`
+`-u, --user, <user>`
 : Set remote user.
 
 `-D, --dryrun`
