@@ -176,7 +176,7 @@ esac; shift; done
 # errors:
 for d in "${deps[@]}"; do is_cmd "$d" || error "missing dependency: $d"; done
 [[ ${#args_operands[@]} -gt 0 ]] && error 'too many arguments'
-((init+push+pull-1)) && error 'too many commands'
+[[ $((init+push+pull)) -gt 1 ]] && error 'too many commands'
 ((init+push+pull)) || { msg_warn 'no command'; exit 0 ;}
 [[ $conf =~ / ]] && error "config file name is not a basename: $conf"
 [[ -z $conf ]] && error 'config file name cannot be blank'
