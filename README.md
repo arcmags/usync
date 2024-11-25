@@ -1,11 +1,15 @@
 # usync
 
-Usync is an [rsync][rsync] wrapper configured by a simple yaml file.
+usync is an [rsync][rsync] wrapper configured by basic yaml file.
 
 ## Installation
 
-Usync is a single bash script (and optional manpage), so it's easy enough to
+usync is a single bash script (and optional manpage), so it's easy enough to
 just copy manually to a *PATH* directory of your choice.
+
+### make
+
+A makefile is provided for easy installation:
 
 `make install` as a non-root user will copy the usync script and manpage to the
 user directories *~/.local/bin* and *~/.local/share/man*.
@@ -17,9 +21,14 @@ system directories */usr/local/bin* and */usr/local/man*.
 
 ## Description
 
-Usync searches the current and parent directories for a yaml file named
-*.usync*. This file defines a remote rsync host and directory. The directory
-containing this file is taken as the local base usync working directory.
+usync searches the current and parent directories for a file named *.usync*. The
+directory containing *.usync* is the local base working directory while the
+contents of .usync define a remote rsync host.
+
+usync forms an rsync command to push/pull the contents of the base working
+directory to/from the remote host using the rsync options: `-azz --delete
+--protect-args`. Exclude patterns may be added in *.usync* or via command line
+arguments.
 
 ## Usage
 
@@ -30,38 +39,38 @@ containing this file is taken as the local base usync working directory.
 : Create a new *.usync* file in current directory.
 
 `push`
-: Push changes to remote source.
+: Push changes to remote rsync host.
 
 `pull`
-: Pull changes from remote source.
+: Pull changes from remote rsync host.
 
 ### Options
 `-c, --config <file>`
-: Read config from *FILE* instead of *.usync*.
+: Set config file basename. (default: *.usync*)
 
 `-d, --dir <directory>`
-: Set remote directory.
+: Set remote rsync directory.
 
 `-e, --exclude <pattern>`
-: Add to exclude patterns.
+: Add to rsync exclude patterns.
 
 `-p, --port <port>`
-: Set remote port.
+: Set remote rsync port.
 
 `-r, --remote, --url <url>`
-: Set remote url.
+: Set remote rsync url. May be an ssh alias.
 
 `-u, --user, <user>`
-: Set remote user.
+: Set remote rsync user.
 
 `-D, --dryrun`
 : Perform dry run making no changes.
 
 `-Q, --quiet`
-: Don't write anything to standard out.
+: Don't write anything to stdout.
 
 `-V, --verbose`
-: Print shell commands.
+: Print more verbose information.
 
 `--nocolor`
 : Disable colored output.
@@ -72,33 +81,20 @@ containing this file is taken as the local base usync working directory.
 ## Config
 *.usync* - yaml file containing the following keys:
 
-*dir*
+`dir`
 : Remote directory. Must be a full path. (required)
 
-*remote* or *url*
-: Remote repo url. May be an ssh alias. (optional)
+`remote` or `url`
+: Remote repo url. May be an ssh alias. (required)
 
-*port*
-: Remote port. (optional)
+`port`
+: Remote port.
 
-*user*
-: Remote user. (optional)
+`user`
+: Remote user.
 
-*exclude*
-: List of patterns to exclude via rsync `--exclude` option. (optional)
-  See [FILTER RULES][rules] section of rsync manual for details and syntax.
-
-## Environment
-Usync is affected by the following environment variables:
-
-`NOCOLOR=1`
-: Disable colored output.
-
-`QUIET=1`
-: Run silently.
-
-`VERBOSE=1`
-: Run verbosely.
+`exclude`
+: List of patterns excluded via rsync `--exclude` option.
 
 ## Requirements
 - rsync

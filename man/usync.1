@@ -1,43 +1,47 @@
-.TH USYNC 1 "2024-11-12" "usync" "Usync Manual"
+.TH USYNC 1 "2024-11-25" "usync" "Usync Manual"
 .SH NAME
 usync \- push/pull changes from remote host
 .SH SYNOPSIS
 \fBusync\fR <\fIcommand\fR> [\fIoption\fR...]
 .SH DESCRIPTION
-\fBusync\fR is an rsync wrapper controlled by a simple config file. \fBusync\fR
-searches the current and parent directories for a file named \fI.usync\fR that
-defines a remote rsync host and base working directory.
+\fBusync\fR is an rsync wrapper configured by a basic yaml file. \fBusync\fR
+searches the current and parent directories for a file named \fI.usync\fR. The
+directory containing \fI.usync\fR is the local base working directory while the
+contents of \fI.usync\fR define a remote rsync host.
+.P
+\fBusync\fR forms an rsync command to push/pull the contents of the base
+working directory to/from the remote host using the rsync options: \fB-azz
+--delete --protect-args\fR. Exclude patterns may be added in \fI.usync\fR or
+via command line arguments.
 .SH COMMANDS
 .TP
 \fBinit\fR
 Create a new \fI.usync\fR file in current directory.
 .TP
 \fBpush\fR
-Push changes to remote source.
+Push changes to remote rsync host.
 .TP
 \fBpull\fR
-Pull changes from remote source.
+Pull changes from remote rsync host.
 .SH OPTIONS
 .TP
 \fB\-c\fR, \fB\-\-config\fR <\fIfile\fR>
-Set config file basename. \fBusync\fR searches current and parent directories
-for \fIfile\fR and uses that file and directory as its configuration and base
-working directory.
+Set config file basename. (default: \fI.usync\fR)
 .TP
 \fB\-d\fR, \fB\-\-dir\fR <\fIdirectory\fR>
-Set remote directory.
+Set remote rsync directory.
 .TP
 \fB\-e\fR, \fB\-\-exclude\fR <\fIpattern\fR>
-Add to exclude patterns.
+Add to rsync exclude patterns.
 .TP
 \fB\-p\fR, \fB\-\-port\fR <\fIport\fR>
-Set remote port number.
+Set remote rsync port number.
 .TP
 \fB\-r\fR, \fB\-\-remote\fR, \fB\-\-url\fR <\fIport\fR>
-Set remote rsync url.
+Set remote rsync url. May be an ssh alias.
 .TP
 \fB\-u\fR, \fB\-\-user\fR <\fIport\fR>
-Set remote rsync/ssh user.
+Set remote rsync user.
 .TP
 \fB\-D\fR, \fB\-\-dryrun\fR
 Perform dry run making no changes.
@@ -52,11 +56,11 @@ Print more verbose information.
 Disable colored output.
 .TP
 \fB\-H\fR, \fB\-\-help\fR
-Print help text and exit.
+Print help text.
 .SH CONFIG
-\fBusync\fR is controlled by a simple yaml config file (default: \fI.usync\fR)
-that defines a remote rsync host and directory. This file must be present to
-\fBpush\fR or \fBpull\fR from a remote host.
+\fBusync\fR is configured by a yaml file \fI.usync\fR that defines a remote
+rsync host and directory. This file must be present to \fBpush\fR or \fBpull\fR
+from a remote host.
 .P
 \fI.usync\fR has the following keys:
 .TP
@@ -67,13 +71,13 @@ Remote rsync directory. Must be a full path. (required)
 Remote rsync url. May be an ssh alias. (required)
 .TP
 \fBport\fR
-Remote ssh port. (optional)
+Remote ssh port.
 .TP
 \fBuser\fR
-Remote ssh user. (optional)
+Remote ssh user.
 .TP
 \fBexclude\fR
-List of patters to exclude via rsync \fB--exclude\fR option. See \fBFILTER
+List of patterns to exclude via rsync \fB--exclude\fR option. See \fBFILTER
 RULES\fR section of rsync manual for details and syntax. (optional)
 .SH ENVIRONMENT
 \fBusync\fR is affected by the following environment variables:
