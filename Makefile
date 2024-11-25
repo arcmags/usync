@@ -19,5 +19,5 @@ install:
 
 .PHONY: uninstall
 uninstall:
-	rm -fv $(PREFIX)/bin/usync
-	rm -fv $(MANPATH)/man1/usync.1
+	rm -f $(PREFIX)/bin/usync
+	rm -f $(MANPATH)/man1/usync.1
