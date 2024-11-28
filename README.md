@@ -105,9 +105,7 @@ Command line options override config file options.
 - rsync
 - ssh
 
-----
-[Chris Magyar](https://mags.zone)\
-[GPLv3](https://www.gnu.org/licenses/gpl-3.0)
+[GPLv3](https://www.gnu.org/licenses/gpl-3.0) | [mags](https://mags.zone)
 
 [rsync]: https://github.com/WayneD/rsync
 
