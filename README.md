@@ -26,9 +26,8 @@ directory containing *.usync* is taken as the base working directory while the
 contents of .usync define a remote rsync host.
 
 usync forms an rsync command to push/pull the contents of the base working
-directory to/from the remote host:
-
-    rsync -azz --delete [--exclude <pattern>]... <source> <destination>
+directory to/from the remote host: `rsync -azz --delete [--exclude
+<pattern>]... <source> <destination>`.
 
 Command line options override config file options.
 
