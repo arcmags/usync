@@ -22,6 +22,7 @@ DESCRIPTION
     Command line options override config file options.
 
 COMMANDS
+    help    Print help information.
     init    Create a new .usync file in current directory.
     push    Push changes to remote rsync host.
     pull    Pull changes from remote rsync host.
@@ -37,7 +38,7 @@ OPTIONS
     -Q, --quiet                 Don't write anything to stdout.
     -V, --verbose               Print more verbose information.
     --nocolor                   Disable colored output.
-    -H, --help                  Print help.
+    -H, --help                  Print help text.
 
 CONFIG
     remote      Remote repo url. May be an ssh alias. (required)
@@ -53,7 +54,7 @@ ENVIRONMENT
 HELPDOC
 }
 [[ $0 != "${BASH_SOURCE[0]}" ]] && { print_help; return 0 ;}
-[[ $1 =~ ^(-H|--help)$ ]] && { print_help; exit ;}
+[[ $1 =~ ^(-H|--help|help)$ ]] && { print_help; exit ;}
 
 # TODO: add paths explicitly?
 
@@ -66,7 +67,7 @@ VERBOSE="${VERBOSE:-0}"
 ## internal functions/variables ::
 readonly -a args=("$@")
 readonly -a deps=(rsync ssh)
-readonly -a opts=(init pull push
+readonly -a opts=(init pull push help
     -c: --config: -d: --dir: -e: --exclude: -p: --port: -r: --remote:
     -u: --user: -D --dryrun -Q --quiet -V --verbose --debug --nocolor -H --help)
 args_operands=() args_options=()
@@ -209,7 +210,7 @@ while [[ -n "$1" ]]; do case "$1" in
     -V|--verbose) QUIET=0; VERBOSE=1 ;;
     --debug) DEBUG=1 ;;
     --nocolor) clear_colors ;;
-    -H|--help) print_help; exit 0 ;;
+    -H|--help|help) print_help; exit 0 ;;
 esac; shift; done
 
 # errors:

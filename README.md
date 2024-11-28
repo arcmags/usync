@@ -36,6 +36,9 @@ Command line options override config file options.
     usync <command> [option...]
 
 ### Commands
+`help`
+: Print help information.
+
 `init`
 : Create a new *.usync* file in current directory.
 
@@ -77,7 +80,7 @@ Command line options override config file options.
 : Disable colored output.
 
 `-H, --help`
-: Display help and exit.
+: Print help text.
 
 ## Config
 *.usync*
@@ -104,10 +107,9 @@ Command line options override config file options.
 
 ----
 [Chris Magyar](https://mags.zone)\
-[GPL v3](https://www.gnu.org/licenses/gpl-3.0)
+[GPLv3](https://www.gnu.org/licenses/gpl-3.0)
 
 [rsync]: https://github.com/WayneD/rsync
-[rules]: https://man7.org/linux/man-pages/man1/rsync.1.html#FILTER_RULES
 
 <!--metadata:
 author: Chris Magyar <c.magyar.ec@gmail.com>
