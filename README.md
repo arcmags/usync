@@ -1,6 +1,6 @@
 # usync
 
-usync is an [rsync][rsync] wrapper configured by basic yaml file.
+usync is an [rsync][rsync] wrapper configured by a basic yaml file.
 
 ## Installation
 
@@ -22,13 +22,15 @@ system directories */usr/local/bin* and */usr/local/man*.
 ## Description
 
 usync searches the current and parent directories for a file named *.usync*. The
-directory containing *.usync* is the local base working directory while the
+directory containing *.usync* is taken as the base working directory while the
 contents of .usync define a remote rsync host.
 
 usync forms an rsync command to push/pull the contents of the base working
-directory to/from the remote host using the rsync options: `-azz --delete
---protect-args`. Exclude patterns may be added in *.usync* or via command line
-arguments.
+directory to/from the remote host:
+
+    rsync -azz --delete [--exclude <pattern>]... <source> <destination>
+
+Command line options override config file options.
 
 ## Usage
 
@@ -52,15 +54,15 @@ arguments.
 : Set remote rsync directory.
 
 `-e, --exclude <pattern>`
-: Add to rsync exclude patterns.
+: Add exclude pattern. Clear patterns if blank.
 
 `-p, --port <port>`
 : Set remote rsync port.
 
-`-r, --remote, --url <url>`
+`-r, --remote <url>`
 : Set remote rsync url. May be an ssh alias.
 
-`-u, --user, <user>`
+`-u, --user <user>`
 : Set remote rsync user.
 
 `-D, --dryrun`
@@ -79,12 +81,13 @@ arguments.
 : Display help and exit.
 
 ## Config
-*.usync* - yaml file containing the following keys:
+*.usync*
+: yaml file containing the following keys:
 
 `dir`
 : Remote directory. Must be a full path. (required)
 
-`remote` or `url`
+`remote`
 : Remote repo url. May be an ssh alias. (required)
 
 `port`

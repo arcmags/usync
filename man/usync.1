@@ -1,18 +1,21 @@
-.TH USYNC 1 "2024-11-25" "usync" "Usync Manual"
+.TH USYNC 1 "2024-11-27" "usync" "Usync Manual"
 .SH NAME
 usync \- push/pull changes from remote host
 .SH SYNOPSIS
 \fBusync\fR <\fIcommand\fR> [\fIoption\fR...]
 .SH DESCRIPTION
-\fBusync\fR is an rsync wrapper configured by a basic yaml file. \fBusync\fR
-searches the current and parent directories for a file named \fI.usync\fR. The
-directory containing \fI.usync\fR is the local base working directory while the
-contents of \fI.usync\fR define a remote rsync host.
+\fBusync\fR is an \fBrsync\fR wrapper configured by a basic yaml file.
+\fBusync\fR searches the current and parent directories for a file named
+\fI.usync\fR. The directory containing \fI.usync\fR is taken as the  base
+working directory while the contents of \fI.usync\fR define a remote rsync
+host.
 .P
-\fBusync\fR forms an rsync command to push/pull the contents of the base
-working directory to/from the remote host using the rsync options: \fB-azz
---delete --protect-args\fR. Exclude patterns may be added in \fI.usync\fR or
-via command line arguments.
+usync forms an rsync command to push/pull the contents of the base working
+directory to/from the remote host:
+.P
+    \fBrsync -azz --delete [--exclude <pattern>]... <source> <destination>\fR
+.P
+Command line options override config file options.
 .SH COMMANDS
 .TP
 \fBinit\fR
@@ -32,12 +35,12 @@ Set config file basename. (default: \fI.usync\fR)
 Set remote rsync directory.
 .TP
 \fB\-e\fR, \fB\-\-exclude\fR <\fIpattern\fR>
-Add to rsync exclude patterns.
+Add exclude patterns. Clear patterns if blank.
 .TP
 \fB\-p\fR, \fB\-\-port\fR <\fIport\fR>
 Set remote rsync port number.
 .TP
-\fB\-r\fR, \fB\-\-remote\fR, \fB\-\-url\fR <\fIport\fR>
+\fB\-r\fR, \fB\-\-remote\fR <\fIurl\fR>
 Set remote rsync url. May be an ssh alias.
 .TP
 \fB\-u\fR, \fB\-\-user\fR <\fIport\fR>
@@ -62,13 +65,13 @@ Print help text.
 rsync host and directory. This file must be present to \fBpush\fR or \fBpull\fR
 from a remote host.
 .P
-\fI.usync\fR has the following keys:
+A valid \fI.usync\fR file has the following keys:
+.TP
+\fBremote\fR
+Remote rsync url. May be an ssh alias. (required)
 .TP
 \fBdir\fR
 Remote rsync directory. Must be a full path. (required)
-.TP
-\fBremote\fR or \fBurl\fR
-Remote rsync url. May be an ssh alias. (required)
 .TP
 \fBport\fR
 Remote ssh port.
