@@ -26,8 +26,8 @@ directory containing *.usync* is taken as the base working directory while the
 contents of .usync define a remote rsync host.
 
 usync forms an rsync command to push/pull the contents of the base working
-directory to/from the remote host: `rsync -azz --delete [--exclude
-<pattern>]... <source> <destination>`.
+directory to/from the remote host: `rsync -aRzz [--delete] [--exclude
+<pattern>]... <source>... <destination>`.
 
 Command line options override config file options.
 
@@ -36,17 +36,14 @@ Command line options override config file options.
     usync <command> [option...]
 
 ### Commands
-`help`
-: Print help information.
-
 `init`
 : Create a new *.usync* file in current directory.
 
-`push`
-: Push changes to remote rsync host.
-
 `pull`
 : Pull changes from remote rsync host.
+
+`push`
+: Push changes to remote rsync host.
 
 ### Options
 `-c, --config <file>`
@@ -70,36 +67,39 @@ Command line options override config file options.
 `-D, --dryrun`
 : Perform dry run making no changes.
 
+`-M, --nocolor`
+: Disable colored output.
+
 `-Q, --quiet`
 : Don't write anything to stdout.
 
 `-V, --verbose`
 : Print more verbose information.
 
-`--nocolor`
-: Disable colored output.
-
-`-H, --help`
+`-H, -h, --help`
 : Print help text.
 
 ## Config
 *.usync*
 : yaml file containing the following keys:
 
-`dir`
-: Remote directory. Must be a full path. (required)
+`delete`
+: Use rsync `--delete` option. (default: true)
+
+`exclude`
+: List of patterns excluded via rsync `--exclude` option. (default: unset)
+
+`port`
+: Remote port. (default: unset)
 
 `remote`
 : Remote repo url. May be an ssh alias. (required)
 
-`port`
-: Remote port.
+`remote_dir`
+: Remote directory. Must be a full path. (required)
 
 `user`
-: Remote user.
-
-`exclude`
-: List of patterns excluded via rsync `--exclude` option.
+: Remote user. (default: unset)
 
 ## Requirements
 - rsync
