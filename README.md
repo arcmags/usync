@@ -76,7 +76,7 @@ Command line options override config file options.
 `-V, --verbose`
 : Print more verbose information.
 
-`-H, -h, --help`
+`-H, --help`
 : Print help text.
 
 ## Config
