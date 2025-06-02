@@ -23,21 +23,21 @@ Commands:
   push      push changes to remote rsync host
 
 Options:
-  -c, --config <file>       set config file basename (default: .usync)
-  -d, --dir <directory>     set remote rsync directory
+  -c, --config <file>       config file basename (default: .usync)
+  -d, --dir <directory>     remote rsync directory
   -e, --exclude <pattern>   add exclude pattern, clear patterns if blank
-  -p, --port <port>         set remote rsync port number
-  -r, --remote <url>        set remote rsync url, may be an ssh alias
-  -s, --source <path>       add source path, clear paths if blank
-  -u, --user <user>         set remote rsync user
+  -p, --port <port>         remote rsync port number
+  -r, --remote <url>        remote rsync url, may be an ssh alias
+  -s, --source <path>       add to source paths, clear paths if blank
+  -u, --user <user>         emote rsync user
   -D, --dryrun              perform dry run making no changes
   -M, --nocolor             disable colored output
   -N, --nodelete            don't use rsync --delete option
   -Q, --quiet               print nothing to stdout
   -V, --verbose             print more verbose information
-  -H, -h, --help            print help text
+  -H, --help                print help text
 
-Config:
+Configuration:
   delete        use rsync --delete option (default: true)
   exclude       list of rsync --exclude patterns (default: unset)
   port          remote port (default: unset)
@@ -56,8 +56,11 @@ HELPDOC
 [[ $1 =~ ^(-H|-h|--help)$ ]] && { print_help; exit ;}
 
 # TODO: allow full path sources?
-# TODO: check if source contains a source?
-# TODO: stat command?
+# TODO: check if any src contains any src
+# TODO: stat command
+# TODO: check for leading ~
+# TODO: bash regex instead of sed for rsync output parsing?
+# TODO: yellow msg_cmd (and msg) if dryrun?
 
 ## settings ::
 debug=0; nocolor=0; quiet=0; verbose=0
@@ -69,7 +72,7 @@ readonly -a opts=(
     init pull push
     -c: --config: -d: --dir: -e: --exclude: -p: --port: -r: --remote:
     -s: --source: -u: --user: -D --dryrun -N --nodelete
-    -H -h --help -M --nocolor -Q --quiet -V --verbose)
+    -H --help -M --nocolor -Q --quiet -V --verbose)
 args_options=() args_positionals=()
 declare opt_dir opt_port opt_remote opt_user opt_exclude=() opt_source=()
 dir= port= remote= user= exclude=() source=()
@@ -78,14 +81,17 @@ array=() array_new=()
 cmd_rsync=(rsync -aRzz --delete '--info=copy1,del1,name1')
 cmd_rsync=(rsync -aRzz '--info=copy1,del1,name1')
 cmd_sed=(sed -Ee '/\/$/d' -e '/^created /d')
+color_add=
+color_del=
 conf_txt=
 conf=.usync
+delete=1
+exclude_default=(.git /local)
 host="$HOSTNAME"
 remote_dir=
-yaml=
-exclude_default=(.git /local)
 source_default=(./)
-delete=1
+status_exit=0
+yaml=
 
 # colors:
 black=$'\e[38;5;0m'; blue=$'\e[38;5;12m'; cyan=$'\e[38;5;14m'
@@ -109,9 +115,6 @@ msg_cmd() {
     [[ $EUID -eq 0 ]] && printf "$bold$red #" || printf "$bold$blue $"
     printf "$off$white"; "$_printf" ' %q' "$@"; printf "$off\n"
 }
-
-# errors:
-error_exit() { msg_error "$*"; exit 3 ;}
 
 # tests:
 check_deps() {
@@ -184,8 +187,14 @@ parse_yaml() {
     done
 }
 
+# error, exit, trap:
+error() { msg_error "$*"; exit 3 ;}
+trap_exit() { ((debug)) && msg_debug '[exit]' ;}
+trap_int() { printf '\n'; msg_error '[sigint]'; exit 99 ;}
+
 ## main ::
-trap exit INT
+trap trap_int INT
+trap trap_exit EXIT
 
 # set from env:
 [[ -n $DEBUG ]] && debug=1
@@ -212,12 +221,12 @@ while [[ -n "$1" ]]; do case "$1" in
     -Q|--quiet) quiet=1; verbose=0 ;;
     -V|--verbose) quiet=0; verbose=1 ;;
     -M|--nocolor) nocolor=1; clear_colors ;;
-    -H|-h|--help) print_help; exit 0 ;;
+    -H|--help) print_help; exit 0 ;;
 esac; shift; done
 
 # check for errors:
-for d in "${deps[@]}"; do is_cmd "$d" || error "missing dependency: $d"; done
-[[ ${#args_operands[@]} -gt 0 ]] && error 'too many arguments'
+check_deps || exit
+[[ ${#args_positionals[@]} -gt 0 ]] && error 'too many arguments'
 [[ $((init+push+pull)) -gt 1 ]] && error 'too many commands'
 ((init+push+pull)) || { msg_warn 'no command'; exit 0 ;}
 [[ $conf =~ / ]] && error "config file name is not a basename: $conf"
@@ -261,10 +270,13 @@ if ((init)); then
     [[ -z "$opt_port" ]] && conf_txt+='#'; conf_txt+="port: $opt_port\n"
     [[ -z "$opt_user" ]] && conf_txt+='#'; conf_txt+="user: $opt_user\n"
     conf_txt+='\n# vim:ft=yaml'
-    ((dryrun)) || printf "$conf_txt\n" > "$conf"
-    msg "usync config created: $conf"
     ((verbose)) && printf "$conf_txt\n"
-    ((dryrun)) && msg_warn 'dryrun'
+    if ((dryrun)); then
+        msg_warn 'dryrun'
+    else
+        printf "$conf_txt\n" > "$conf"
+        msg "usync config created: $conf"
+    fi
     exit 0
 fi
 
@@ -298,13 +310,6 @@ arr=("${yaml_source[@]}" "${opt_source[@]}"); parse_arr; source=("${arr_new[@]}"
 [[ -f /etc/hostname- ]] && host="$(cat /etc/hostname-)"
 [[ $remote =~ ^(|$host|127.0.0.1)$ ]] && remote='localhost'
 
-# debug info:
-if ((debug)); then
-    msg_debug "delete=$delete dir=$dir port=$port remote=$remote user=$user"
-    msg_debug "source=(${source[*]})"
-    msg_debug "exclude=(${exclude[*]})"
-fi
-
 # set delete option:
 ((delete)) && cmd_rsync+=(--delete)
 
@@ -328,16 +333,14 @@ fi
 # add excludes to rsync args:
 for e in "${exclude[@]}"; do cmd_rsync+=('--exclude' "$e"); done
 
+# set output colors:
+color_add="$bold$green"; color_del="$bold$red"
 if ((dryrun)); then
-    # add --dry-run to rsync args and set output colors to yellow:
     cmd_rsync+=('--dry-run')
-    cmd_sed+=(-e "s/deleting /$bold$yellow - $off$white/"
-        -e "/ - /! s/^/$bold$yellow + $off$white/")
-else
-    # set output colors to green and red:
-    cmd_sed+=(-e "s/deleting /$bold$red - $off$white/"
-        -e "/ - /! s/^/$bold$green + $off$white/")
+    color_add="$bold$yellow"; color_del="$bold$yellow"
 fi
+cmd_sed+=(-e "/^deleting /! s/^/${color_add} + $off$white/"
+    -e "s/deleting /${color_del} - $off$white/")
 
 # add rsync push/pull args:
 if ((push)); then
@@ -366,14 +369,19 @@ elif ((pull)); then
 fi
 
 # rsync:
+((debug)) && { printf "$yellow${bold}D:"; msg_cmd "${cmd_rsync[@]}"; exit ;}
 ((verbose)) && msg_cmd "${cmd_rsync[@]}"
 if ((quiet)); then
     "${cmd_rsync[@]}" 1>/dev/null
+    status_exit=$?
 else
     "${cmd_rsync[@]}" | "${cmd_sed[@]}"
+    status_exit=$?
 fi
 
 # dryrun warning:
 ((dryrun)) && msg_warn 'dryrun'
+
+exit $status_exit
 
 # vim:ft=bash
